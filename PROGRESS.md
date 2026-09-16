@@ -7,15 +7,16 @@
 **Live URL:** none yet
 
 ## Current state
-First Session Setup complete: docs/ created, product-spec.md and supabase-setup-portal.md (the sibling tool's schema reference) moved into it. Nothing else built yet.
+Database side is done and verified: connected to the existing Supabase project, added the `submission_reviews` table with RLS, and granted the `authenticated` role read-only access to the three existing portal tables (they had zero grants before — this tool is the first to introduce Supabase Auth to this project). Verified afterward that all five sibling RPCs and every existing anon-facing grant/policy are untouched. Wrote docs/supabase-setup.md. No frontend built yet.
 
 ## Last session
-Session 1 (2026-09-16): Connected the local project folder to the GitHub repo, ran First Session Setup (docs/ created, reference files moved). Next: connect to the existing Supabase project and start building the schema additions.
+Session 1 (2026-09-16): Connected the local project folder to the GitHub repo, ran First Session Setup. Connected to the existing Supabase project via MCP, applied migration `add_sustainable_suppliers_dashboard_schema` (new submission_reviews table + authenticated-role read policies on respondents/ecovadis_submissions/questionnaire_submissions), verified the sibling tool's schema was untouched, wrote docs/supabase-setup.md. Next: confirm Supabase email/password auth provider is enabled, then build the frontend.
 
 ## Remaining work
 - [x] First Session Setup: create docs/, move product-spec.md and the sibling supabase-setup.md into it (renamed supabase-setup-portal.md), commit (see CLAUDE.md Session Protocol)
-- [ ] Connect to Supabase project "AI Lab project supplier portal" (ID yfshmobaatyruymcpbex) and read docs/supabase-setup-portal.md before any database work
-- [ ] Create this tool's new table (submission_reviews) and RLS policies, plus Auth configuration (email/password, invite-only), without touching any existing table/policy — then write this tool's own docs/supabase-setup.md
+- [x] Connect to Supabase project "AI Lab project supplier portal" (ID yfshmobaatyruymcpbex) and read docs/supabase-setup-portal.md before any database work
+- [x] Create this tool's new table (submission_reviews) and RLS policies, without touching any existing table/policy — then write this tool's own docs/supabase-setup.md
+- [ ] Confirm the Supabase email/password Auth provider is enabled (Authentication → Providers), and invite the first team member(s) (Authentication → Users → Invite)
 - [ ] Build Login view
 - [ ] Build Home/Summary view — EcoVadis-complete, Questionnaire-complete, in-progress, and need-review counts
 - [ ] Build Red Flags view — flagged questionnaire respondents with triggered rule(s) shown
@@ -26,7 +27,8 @@ Session 1 (2026-09-16): Connected the local project folder to the GitHub repo, r
 - [ ] Deploy to Netlify — builder adds environment variables in the Netlify dashboard (or activates Netlify MCP first, if decided by then)
 
 ## Build decisions
-None yet.
+- The `authenticated` role had zero grants on respondents/ecovadis_submissions/questionnaire_submissions before this build (same lockdown as anon) — explicit `grant select ... to authenticated` was required in addition to the RLS policies, since a policy alone does nothing without the base grant.
+- submission_reviews RLS uses `using (true)`/`with check (true)` for all authenticated operations — matches the spec's "all team members have identical access" requirement; revisit if per-user restriction is ever needed.
 
 ## Known issues
 - Netlify MCP activation not yet decided — builder to confirm before or during the build session.
