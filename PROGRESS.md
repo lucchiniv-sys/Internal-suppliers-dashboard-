@@ -7,15 +7,13 @@
 **Live URL:** https://miadb.netlify.app (public)
 
 ## Current state
-Live and working. Login (Supabase Auth email/password), Summary counts, Red Flags, and the searchable Suppliers Table (with a Type badge column and inline-editable Review Status) are all verified against the deployed site with a real account. One bug found and fixed during verification: signed-file-url.js returned "not configured" because SUPABASE_SERVICE_ROLE_KEY was set with the `envVarIsSecret` flag, which silently failed to persist the value (same failure mode hit on the sibling tool) — re-set without that flag, confirmed present via getAllEnvVars, redeploy pending to pick it up. File-view button not yet re-verified after this fix.
+Live and working, fully verified: login, Summary counts, Red Flags, the searchable Suppliers Table (Type badge, inline-editable Review Status), Supplier Detail view, and the signed file-view link (confirmed 200, correct Supabase Storage URL) all tested against the deployed site with a temporary QA account (created and deleted via the Supabase Admin API during this session). One bug found and fixed: signed-file-url.js returned "not configured" because SUPABASE_SERVICE_ROLE_KEY was set with the `envVarIsSecret` flag, which silently failed to persist the value (same failure mode as on the sibling tool) — re-set without that flag and redeployed.
 
 ## Last session
 Session 1 (2026-09-16): Full build — schema (submission_reviews + authenticated-role read access), frontend (login, dashboard with all 4 sections, plain HTML/JS instead of the specced React/Vite since this environment has no Node.js), Netlify site "miadb" created, env vars set, deployed. Live-tested: login required a redo (user's password re-entry mismatch, resolved), added a Type column to the suppliers table per builder feedback, found and fixed the service-role-key env var bug. Created and will remove a temporary QA test account (qa-test-dashboard@example.com) used for verification — real team accounts are the builder's own.
 
 ## Remaining work
-- [ ] Re-verify the "View Scorecard / View Uploaded File" button now that SUPABASE_SERVICE_ROLE_KEY is correctly set and a fresh deploy has gone out
-- [ ] Delete the temporary QA test auth user (qa-test-dashboard@example.com) once verification is done
-- [ ] Invite the real team member(s) via Authentication → Users → Invite (or Create new user), remove/keep the builder's own test account as she prefers
+- [ ] Invite the real team member(s) via Authentication → Users → Invite (or Create new user); the builder already has her own working account
 - [ ] Test the online-questionnaire detail rendering (grouped Q&A by section) — no respondent has completed the online path yet, only excel_upload and in-progress exist, so this path is unverified
 - [ ] Test a genuine Red Flag once a supplier completes the online questionnaire with a flagged answer
 - [ ] Acceptance criteria pass — verify every criterion in spec Section "Acceptance Criteria" before calling this done
