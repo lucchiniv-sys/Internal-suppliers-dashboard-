@@ -30,19 +30,19 @@ PROGRESS.md structure (for the recreate rule): status header (Session / Last upd
 
 ## Commands
 ```
-npm install
-npm run dev
-npm run build
+npx serve .
 ```
 
 ## Tech Stack
-React · Vite · Tailwind CSS · shadcn/ui · Netlify · Supabase
+HTML · CSS · JavaScript · Netlify · Supabase
 Deployment: GitHub → Netlify, auto-deploys from main. Netlify MCP is not active — the builder connects the repo and enters environment variables in the Netlify dashboard; remind them before the first deploy.
 
+**Build decision (session 1):** switched from the originally specced React + Vite + Tailwind to plain HTML/CSS/JS. The build environment has no Node.js/npm available, so a Vite build could not be tested locally before pushing — every iteration would have meant guessing at Netlify's own build result and burning build minutes on failures. Plain HTML/JS needs no build step (matches the sibling Supplier Engagement Portal's stack) and can be verified directly against the deployed site. Functionality is unchanged from the spec.
+
 ## Environment Variables
-VITE_SUPABASE_URL — Supabase: Project Settings → API Keys → Project URL — Netlify env var (browser-exposed, safe — protected by RLS)
-VITE_SUPABASE_ANON_KEY — Supabase: Project Settings → API Keys → publishable/anon key — Netlify env var (browser-exposed, safe — protected by RLS)
-SUPABASE_SERVICE_ROLE_KEY — Supabase: Project Settings → API Keys → service_role/secret key — Netlify env var, server-side only, used only inside a Netlify Function to generate signed URLs for viewing existing uploaded files (the shared Storage bucket has no policy granting authenticated users direct read access). Never sent to the browser.
+SUPABASE_URL — Supabase: Project Settings → API Keys → Project URL — Netlify env var. Since this is a plain HTML/JS site with no build step, the frontend fetches this (and SUPABASE_ANON_KEY) at runtime from a small config-serving Netlify Function (`public-config.js`), same pattern as the sibling tool — never hardcoded in a committed file.
+SUPABASE_ANON_KEY — Supabase: Project Settings → API Keys → publishable/anon key — Netlify env var, served the same way as SUPABASE_URL above.
+SUPABASE_SERVICE_ROLE_KEY — Supabase: Project Settings → API Keys → service_role/secret key — Netlify env var, server-side only, used only inside a Netlify Function to (a) verify the caller has a valid logged-in session and (b) generate a signed URL for viewing an existing uploaded file (the shared Storage bucket has no policy granting authenticated users direct read access). Never sent to the browser.
 
 Key storage follows function placement: Netlify Functions and the frontend read Netlify environment variables. No value ever appears in code or in any file committed to GitHub. At session start, confirm these exist before first use; prompt the builder for any that are missing.
 
@@ -68,19 +68,16 @@ Auth: email and password — invite-only (builder invites team members via the S
 After setup, write docs/supabase-setup.md and update it at every save point that touches the database. It must contain: project name, project ID, project URL, plan, every table with field names and types, RLS policies per table, auth configuration, notes for future sessions, and a last-updated line with date and session number. From the moment it exists, that file is the schema source of truth for this tool (see docs/supabase-setup-portal.md for the sibling tool's part of the shared schema).
 
 ## Hard Rules
-- API keys never in any frontend file or GitHub commit. Storage follows function placement: Netlify env vars for Netlify Functions and the frontend (VITE_-prefixed only for browser-safe values). Always called through a server-side function for the service role key.
+- API keys never in any frontend file or GitHub commit. The Supabase URL and anon key are served to the browser only via the public-config.js Netlify Function, never hardcoded. The service role key is only ever read inside a server-side Netlify Function.
 - Netlify Identity: never. Supabase Auth is the only authentication system in this stack.
 - RLS: never disabled on any table. If a query fails, fix the policy or the query — never disable RLS to work around it.
-- Supabase service role key required for generating signed URLs to view existing uploaded files (EcoVadis PDFs, questionnaire Excel files) from the Supplier Detail view, since the shared Storage bucket has no policy granting authenticated users direct read access. Stored as SUPABASE_SERVICE_ROLE_KEY, used only inside a Netlify Function — never in code or the browser. Flag to the builder before implementing.
+- Supabase service role key required for generating signed URLs to view existing uploaded files (EcoVadis PDFs, questionnaire Excel files) from the Supplier Detail view, since the shared Storage bucket has no policy granting authenticated users direct read access. Stored as SUPABASE_SERVICE_ROLE_KEY, used only inside a Netlify Function — never in code or the browser. Before returning a signed URL, that function must verify the caller's Supabase Auth session token is valid (via supabase.auth.getUser) — anyone who could call it without a valid session would get access to supplier files without logging in.
 - This tool shares a Supabase project with Supplier Engagement Portal. Protected tables — respondents, ecovadis_submissions, questionnaire_submissions, and the submissions Storage bucket — must never have their existing schema, anon RLS policies, or grants modified or removed. This tool may only ADD new SELECT policies for the authenticated role on those tables, and manage its own submission_reviews table freely. Query the protected tables only as documented in docs/supabase-setup-portal.md.
 
 ## Project Structure
 ```
-/                     ← root: CLAUDE.md, PROGRESS.md only
-/src
-  /components
-  /lib                ← Supabase client, utilities
-/netlify/functions    ← signed URL generator (service-role-backed)
+/                     ← root: CLAUDE.md, PROGRESS.md, index.html (login), dashboard.html (main app)
+/netlify/functions    ← public-config.js, signed-file-url.js (service-role-backed)
 /docs                 ← product-spec.md, supabase-setup.md, supabase-setup-portal.md
 ```
 

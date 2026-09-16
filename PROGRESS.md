@@ -29,6 +29,7 @@ Session 1 (2026-09-16): Connected the local project folder to the GitHub repo, r
 ## Build decisions
 - The `authenticated` role had zero grants on respondents/ecovadis_submissions/questionnaire_submissions before this build (same lockdown as anon) — explicit `grant select ... to authenticated` was required in addition to the RLS policies, since a policy alone does nothing without the base grant.
 - submission_reviews RLS uses `using (true)`/`with check (true)` for all authenticated operations — matches the spec's "all team members have identical access" requirement; revisit if per-user restriction is ever needed.
+- Switched from the specced React + Vite + Tailwind to plain HTML/CSS/JS (builder approved) — no Node.js in the build environment to test a Vite build locally before pushing. No functional change from the spec.
 
 ## Known issues
 - Netlify MCP activation not yet decided — builder to confirm before or during the build session.
