@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sustainable Suppliers Dashboard</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F7F8FA;
+    --surface: #FFFFFF;
+    --ink: #14213D;
+    --muted: #6B7385;
+    --border: #DDE1E8;
+    --error: #B3261E;
+    --error-bg: #FBEAE9;
+    --flag: #B3261E;
+    --flag-bg: #FBEAE9;
+    --need-review: #9A6700;
+    --need-review-bg: #FFF3D6;
+    --final: #1E7A46;
+    --final-bg: #E4F5EA;
+  }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+  a { color: inherit; }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header h1 { font-size: 16px; font-weight: 700; }
+  .user-bar { display: flex; align-items: center; gap: 16px; font-size: 13px; color: var(--muted); }
+  .btn-signout {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    cursor: pointer;
+  }
+  .btn-signout:hover { background: var(--bg); }
+
+  main { max-width: 1080px; margin: 0 auto; padding: 32px; }
+  section { margin-bottom: 40px; }
+  h2 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 720px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+  .stat-value { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+  .stat-label { font-size: 12px; color: var(--muted); }
+
+  .empty-state { font-size: 13px; color: var(--muted); padding: 16px 0; }
+
+  .flag-list { display: flex; flex-direction: column; gap: 8px; }
+  .flag-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--flag);
+    border-radius: 6px;
+    padding: 12px 16px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .flag-row:hover { background: var(--bg); }
+  .flag-company { font-weight: 600; font-size: 14px; }
+  .flag-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .flag-tag {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--flag);
+    background: var(--flag-bg);
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+
+  .search-box {
+    width: 100%;
+    max-width: 320px;
+    padding: 9px 12px;
+    font-family: inherit;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 16px;
+    background: var(--surface);
+  }
+
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  thead th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody td {
+    padding: 10px 14px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.clickable { cursor: pointer; }
+  tbody tr.clickable:hover { background: var(--bg); }
+  .file-yes { color: var(--final); font-weight: 500; }
+  .file-no { color: var(--muted); }
+
+  select.status-select {
+    font-family: inherit;
+    font-size: 12px;
+    padding: 5px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink);
+  }
+  .status-new { color: var(--muted); }
+  .status-need_review { color: var(--need-review); font-weight: 500; }
+  .status-final_submission { color: var(--final); font-weight: 500; }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 33, 61, 0.4);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 16px;
+    overflow-y: auto;
+    z-index: 100;
+  }
+  .overlay[hidden] { display: none; }
+  .detail-panel {
+    background: var(--surface);
+    border-radius: 10px;
+    max-width: 640px;
+    width: 100%;
+    padding: 28px 32px;
+  }
+  .detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; gap: 12px; }
+  .detail-title { font-size: 18px; font-weight: 700; }
+  .detail-close {
+    font-family: inherit;
+    font-size: 13px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .detail-row { display: flex; justify-content: space-between; gap: 16px; padding: 7px 0; font-size: 13px; border-bottom: 1px solid var(--border); }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-label { color: var(--muted); }
+  .detail-value { text-align: right; font-weight: 500; }
+  .detail-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 20px 0 8px; }
+  .qa-field { margin-bottom: 10px; }
+  .qa-label { font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+  .qa-value { font-size: 13px; }
+  .file-link-btn {
+    display: inline-block;
+    margin-top: 12px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: #FFFFFF;
+    background: var(--ink);
+    border: none;
+    border-radius: 6px;
+    padding: 9px 18px;
+    cursor: pointer;
+  }
+  .file-link-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .status-field { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .status-field label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 6px; }
+
+  .loading-msg { font-size: 13px; color: var(--muted); padding: 40px 0; text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Sustainable Suppliers Dashboard</h1>
+  <div class="user-bar">
+    <span id="user-email"></span>
+    <button class="btn-signout" id="signout-btn">Sign Out</button>
+  </div>
+</header>
+
+<main>
+  <div id="loading" class="loading-msg">Loading…</div>
+
+  <div id="app" hidden>
+    <section>
+      <h2>Summary</h2>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-ecovadis">0</div>
+          <div class="stat-label">EcoVadis submitted</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-questionnaire">0</div>
+          <div class="stat-label">Questionnaire completed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-in-progress">0</div>
+          <div class="stat-label">In progress</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-need-review">0</div>
+          <div class="stat-label">Need review</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Red Flags</h2>
+      <div id="flags-container"></div>
+    </section>
+
+    <section>
+      <h2>All Suppliers</h2>
+      <input type="text" class="search-box" id="search-input" placeholder="Search by company name…">
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Company</th>
+              <th>Contact</th>
+              <th>File</th>
+              <th>Submitted</th>
+              <th>Review Status</th>
+            </tr>
+          </thead>
+          <tbody id="suppliers-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div class="overlay" id="detail-overlay" hidden>
+  <div class="detail-panel" id="detail-panel"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var sb = null;
+  var session = null;
+  var state = {
+    respondents: [],
+    ecovadisByRespondent: {},
+    questionnaireByRespondent: {},
+    reviewByRespondent: {}
+  };
+
+  var STATUS_OPTIONS = [
+    { value: 'new_to_be_analysed', label: 'New / To be analysed' },
+    { value: 'need_review', label: 'Need review' },
+    { value: 'final_submission', label: 'Final submission' }
+  ];
+
+  var ONLINE_SECTIONS = [
+    { title: 'S2 — Climate & Decarbonisation (E1)', fields: [
+      { name: 'scope1_emissions_tco2e', label: 'Scope 1 emissions (tCO2e)' },
+      { name: 'scope2_emissions_tco2e_market_based', label: 'Scope 2 emissions, market-based (tCO2e)' },
+      { name: 'scope2_verification_method', label: 'Scope 2 verification method' },
+      { name: 'scope3_emissions_tco2e', label: 'Scope 3 emissions (tCO2e)' },
+      { name: 'scope3_categories_included', label: 'Scope 3 categories included' },
+      { name: 'sbti_target', label: 'Has an SBTi-validated target' },
+      { name: 'decarbonisation_projects', label: 'Top 3 decarbonisation projects, next 24 months' },
+      { name: 'reduction_barriers', label: 'Barriers to a 50% reduction by 2030' }
+    ] },
+    { title: 'S3 — Pollution & PFAS (E2)', fields: [
+      { name: 'substances_of_concern_kg', label: 'REACH/SVHC substances of concern (kg)' },
+      { name: 'pfas_present', label: 'Products/processes contain PFAS' },
+      { name: 'pfas_substitution_roadmap', label: 'PFAS substitution roadmap' },
+      { name: 'wastewater_treatment', label: 'Wastewater treatment process' }
+    ] },
+    { title: 'S4 — Water (E3)', fields: [
+      { name: 'water_withdrawal_m3', label: 'Water withdrawal (m³)' },
+      { name: 'water_source', label: 'Water source' },
+      { name: 'high_water_stress_region', label: 'Primary facility in a high-water-stress region' },
+      { name: 'water_saving_projects', label: 'Water-saving / recycling initiatives' },
+      { name: 'drought_contingency_plan', label: 'Drought contingency plan' }
+    ] },
+    { title: 'S5 — Circular Economy & Waste (E5)', fields: [
+      { name: 'waste_generated_tonnes', label: 'Waste generated (tonnes)' },
+      { name: 'waste_breakdown', label: 'Waste breakdown' },
+      { name: 'pcr_content_percent', label: 'Post-consumer recycled content (%)' },
+      { name: 'circularity_in_components', label: 'Circularity approach for components supplied' },
+      { name: 'zero_waste_strategy', label: 'Zero Waste to Landfill strategy' }
+    ] },
+    { title: 'S6 — Biodiversity (E4)', fields: [
+      { name: 'protected_area_proximity', label: 'Site within/adjacent to a protected area' },
+      { name: 'biodiversity_initiatives', label: 'Biodiversity initiatives taken' },
+      { name: 'biodiversity_impact_assessment', label: 'TNFD or equivalent assessment status' }
+    ] },
+    { title: 'S7 — Social, Labour & Governance (S2, G1)', fields: [
+      { name: 'human_rights_policy', label: 'Formal Human Rights Policy exists' },
+      { name: 'human_rights_due_diligence', label: 'Due diligence conducted in last 24 months' },
+      { name: 'grievance_mechanism', label: 'Grievance mechanism — description and numbers filed/resolved' },
+      { name: 'conflict_minerals_policy', label: 'Verified 3TG conflict minerals policy in place' },
+      { name: 'code_of_conduct_monitoring', label: 'How compliance is monitored, including audits' }
+    ] }
+  ];
+
+  function el(tag, attrs, children) {
+    var node = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) {
+      if (k === 'class') node.className = attrs[k];
+      else if (k === 'text') node.textContent = attrs[k];
+      else node.setAttribute(k, attrs[k]);
+    });
+    (children || []).forEach(function (c) { node.appendChild(c); });
+    return node;
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
+    catch (e) { return iso; }
+  }
+
+  async function ensureSupabase() {
+    if (sb) return sb;
+    var res = await fetch('/.netlify/functions/public-config');
+    if (!res.ok) throw new Error('Could not reach the dashboard service.');
+    var cfg = await res.json();
+    sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+    return sb;
+  }
+
+  function statusLabel(value) {
+    var match = STATUS_OPTIONS.filter(function (o) { return o.value === value; })[0];
+    return match ? match.label : value;
+  }
+
+  function buildStatusSelect(respondentId, currentStatus, onChange) {
+    var select = el('select', { class: 'status-select status-' + currentStatus });
+    STATUS_OPTIONS.forEach(function (opt) {
+      var option = el('option', { value: opt.value, text: opt.label });
+      if (opt.value === currentStatus) option.setAttribute('selected', 'selected');
+      select.appendChild(option);
+    });
+    select.addEventListener('click', function (e) { e.stopPropagation(); });
+    select.addEventListener('change', function (e) {
+      e.stopPropagation();
+      select.className = 'status-select status-' + select.value;
+      onChange(select.value);
+    });
+    return select;
+  }
+
+  async function saveReviewStatus(respondentId, newStatus) {
+    var client = await ensureSupabase();
+    var { error } = await client.from('submission_reviews').upsert(
+      { respondent_id: respondentId, review_status: newStatus, updated_at: new Date().toISOString() },
+      { onConflict: 'respondent_id' }
+    );
+    if (error) {
+      console.error('Failed to save review status:', error);
+      alert('Could not save the review status. Please try again.');
+      return;
+    }
+    state.reviewByRespondent[respondentId] = newStatus;
+    renderSummary();
+  }
+
+  function computeRedFlags() {
+    var flags = [];
+    state.respondents.forEach(function (r) {
+      if (r.door_type !== 'questionnaire') return;
+      var q = state.questionnaireByRespondent[r.id];
+      if (!q || !q.responses) return;
+      var responses = q.responses;
+      var reasons = [];
+      if (responses.pfas_present === 'Yes') reasons.push('PFAS present');
+      if (responses.sbti_target === 'No') reasons.push('No SBTi target');
+      if (responses.high_water_stress_region === 'Yes') reasons.push('High water stress region');
+      var hasMissing = Object.keys(responses).some(function (k) { return responses[k] === 'Not Available'; });
+      if (hasMissing) reasons.push('Incomplete data');
+      if (reasons.length) flags.push({ respondent: r, reasons: reasons });
+    });
+    return flags;
+  }
+
+  function renderSummary() {
+    var ecovadisCount = state.respondents.filter(function (r) { return r.door_type === 'ecovadis' && r.status === 'complete'; }).length;
+    var questionnaireCount = state.respondents.filter(function (r) { return r.door_type === 'questionnaire' && r.status === 'complete'; }).length;
+    var inProgressCount = state.respondents.filter(function (r) { return r.status === 'in_progress'; }).length;
+    var needReviewCount = Object.keys(state.reviewByRespondent).filter(function (id) { return state.reviewByRespondent[id] === 'need_review'; }).length;
+
+    document.getElementById('stat-ecovadis').textContent = ecovadisCount;
+    document.getElementById('stat-questionnaire').textContent = questionnaireCount;
+    document.getElementById('stat-in-progress').textContent = inProgressCount;
+    document.getElementById('stat-need-review').textContent = needReviewCount;
+  }
+
+  function renderRedFlags() {
+    var container = document.getElementById('flags-container');
+    container.innerHTML = '';
+    var flags = computeRedFlags();
+    if (!flags.length) {
+      container.appendChild(el('p', { class: 'empty-state', text: 'No red flags right now.' }));
+      return;
+    }
+    var list = el('div', { class: 'flag-list' });
+    flags.forEach(function (f) {
+      var row = el('div', { class: 'flag-row' });
+      row.appendChild(el('div', { class: 'flag-company', text: f.respondent.company_name }));
+      var tags = el('div', { class: 'flag-tags' });
+      f.reasons.forEach(function (reason) { tags.appendChild(el('span', { class: 'flag-tag', text: reason })); });
+      row.appendChild(tags);
+      row.addEventListener('click', function () { openDetail(f.respondent.id); });
+      list.appendChild(row);
+    });
+    container.appendChild(list);
+  }
+
+  function renderSuppliersTable(filterText) {
+    var tbody = document.getElementById('suppliers-tbody');
+    tbody.innerHTML = '';
+    var filter = (filterText || '').trim().toLowerCase();
+    var rows = state.respondents.filter(function (r) {
+      return !filter || r.company_name.toLowerCase().indexOf(filter) !== -1;
+    });
+
+    if (!rows.length) {
+      var tr = el('tr');
+      var td = el('td', { colspan: '5', class: 'empty-state', text: 'No suppliers found.' });
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+
+    rows.forEach(function (r) {
+      var hasFile = !!(state.ecovadisByRespondent[r.id] || (state.questionnaireByRespondent[r.id] && state.questionnaireByRespondent[r.id].file_url));
+      var currentStatus = state.reviewByRespondent[r.id] || 'new_to_be_analysed';
+
+      var tr = el('tr', { class: 'clickable' });
+      tr.appendChild(el('td', { text: r.company_name }));
+      tr.appendChild(el('td', { text: r.contact_name }));
+      tr.appendChild(el('td', { class: hasFile ? 'file-yes' : 'file-no', text: hasFile ? 'Yes' : 'No' }));
+      tr.appendChild(el('td', { text: formatDate(r.updated_at) }));
+
+      var statusTd = el('td');
+      statusTd.appendChild(buildStatusSelect(r.id, currentStatus, function (newStatus) {
+        saveReviewStatus(r.id, newStatus);
+      }));
+      tr.appendChild(statusTd);
+
+      tr.addEventListener('click', function () { openDetail(r.id); });
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function openDetail(respondentId) {
+    var r = state.respondents.filter(function (x) { return x.id === respondentId; })[0];
+    if (!r) return;
+
+    var panel = document.getElementById('detail-panel');
+    panel.innerHTML = '';
+
+    var header = el('div', { class: 'detail-header' }, [
+      el('div', { class: 'detail-title', text: r.company_name }),
+      el('button', { class: 'detail-close', text: 'Close' })
+    ]);
+    header.querySelector('.detail-close').addEventListener('click', closeDetail);
+    panel.appendChild(header);
+
+    panel.appendChild(el('div', { class: 'detail-row' }, [el('span', { class: 'detail-label', text: 'Contact' }), el('span', { class: 'detail-value', text: r.contact_name })]));
+    panel.appendChild(el('div', { class: 'detail-row' }, [el('span', { class: 'detail-label', text: 'Email' }), el('span', { class: 'detail-value', text: r.contact_email })]));
+    panel.appendChild(el('div', { class: 'detail-row' }, [el('span', { class: 'detail-label', text: 'Door' }), el('span', { class: 'detail-value', text: r.door_type === 'ecovadis' ? 'EcoVadis' : 'Questionnaire' })]));
+    panel.appendChild(el('div', { class: 'detail-row' }, [el('span', { class: 'detail-label', text: 'Status' }), el('span', { class: 'detail-value', text: r.status.replace('_', ' ') })]));
+    panel.appendChild(el('div', { class: 'detail-row' }, [el('span', { class: 'detail-label', text: 'First submitted' }), el('span', { class: 'detail-value', text: formatDate(r.created_at) })]));
+    panel.appendChild(el('div', { class: 'detail-row' }, [el('span', { class: 'detail-label', text: 'Last updated' }), el('span', { class: 'detail-value', text: formatDate(r.updated_at) })]));
+
+    if (r.door_type === 'ecovadis') {
+      var eco = state.ecovadisByRespondent[r.id];
+      panel.appendChild(el('div', { class: 'detail-section-title', text: 'EcoVadis Scorecard' }));
+      if (eco && eco.file_url) {
+        panel.appendChild(buildFileButton(eco.file_url, 'View Scorecard'));
+      } else {
+        panel.appendChild(el('p', { class: 'empty-state', text: 'No file uploaded yet.' }));
+      }
+    } else {
+      var q = state.questionnaireByRespondent[r.id];
+      panel.appendChild(el('div', { class: 'detail-section-title', text: 'Questionnaire' }));
+      if (!q) {
+        panel.appendChild(el('p', { class: 'empty-state', text: 'No submission yet.' }));
+      } else if (q.mode === 'excel_upload') {
+        if (q.file_url) panel.appendChild(buildFileButton(q.file_url, 'View Uploaded File'));
+        else panel.appendChild(el('p', { class: 'empty-state', text: 'No file uploaded yet.' }));
+      } else if (q.mode === 'online' && q.responses) {
+        ONLINE_SECTIONS.forEach(function (section) {
+          var sectionFields = section.fields.filter(function (f) { return q.responses[f.name] !== undefined; });
+          if (!sectionFields.length) return;
+          panel.appendChild(el('div', { class: 'detail-section-title', text: section.title }));
+          sectionFields.forEach(function (f) {
+            panel.appendChild(el('div', { class: 'qa-field' }, [
+              el('div', { class: 'qa-label', text: f.label }),
+              el('div', { class: 'qa-value', text: q.responses[f.name] || 'Not Available' })
+            ]));
+          });
+        });
+      }
+    }
+
+    var statusField = el('div', { class: 'status-field' }, [el('label', { text: 'Review status' })]);
+    var currentStatus = state.reviewByRespondent[r.id] || 'new_to_be_analysed';
+    statusField.appendChild(buildStatusSelect(r.id, currentStatus, function (newStatus) {
+      saveReviewStatus(r.id, newStatus);
+      renderSuppliersTable(document.getElementById('search-input').value);
+    }));
+    panel.appendChild(statusField);
+
+    document.getElementById('detail-overlay').hidden = false;
+  }
+
+  function buildFileButton(filePath, label) {
+    var btn = el('button', { class: 'file-link-btn', text: label });
+    btn.addEventListener('click', async function () {
+      btn.disabled = true;
+      var originalLabel = btn.textContent;
+      btn.textContent = 'Loading…';
+      try {
+        var res = await fetch('/.netlify/functions/signed-file-url', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + session.access_token
+          },
+          body: JSON.stringify({ file_path: filePath })
+        });
+        var json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Could not open the file.');
+        window.open(json.url, '_blank', 'noopener');
+      } catch (err) {
+        alert(err.message || 'Could not open the file.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+      }
+    });
+    return btn;
+  }
+
+  function closeDetail() {
+    document.getElementById('detail-overlay').hidden = true;
+  }
+
+  async function loadData() {
+    var client = await ensureSupabase();
+
+    var [respondentsRes, ecovadisRes, questionnaireRes, reviewsRes] = await Promise.all([
+      client.from('respondents').select('*'),
+      client.from('ecovadis_submissions').select('*'),
+      client.from('questionnaire_submissions').select('*'),
+      client.from('submission_reviews').select('*')
+    ]);
+
+    if (respondentsRes.error) throw respondentsRes.error;
+    if (ecovadisRes.error) throw ecovadisRes.error;
+    if (questionnaireRes.error) throw questionnaireRes.error;
+    if (reviewsRes.error) throw reviewsRes.error;
+
+    state.respondents = respondentsRes.data || [];
+    state.ecovadisByRespondent = {};
+    (ecovadisRes.data || []).forEach(function (row) {
+      // keep the most recently uploaded, if a respondent somehow has more than one
+      var existing = state.ecovadisByRespondent[row.respondent_id];
+      if (!existing || new Date(row.uploaded_at) > new Date(existing.uploaded_at)) {
+        state.ecovadisByRespondent[row.respondent_id] = row;
+      }
+    });
+    state.questionnaireByRespondent = {};
+    (questionnaireRes.data || []).forEach(function (row) {
+      state.questionnaireByRespondent[row.respondent_id] = row;
+    });
+    state.reviewByRespondent = {};
+    (reviewsRes.data || []).forEach(function (row) {
+      state.reviewByRespondent[row.respondent_id] = row.review_status;
+    });
+  }
+
+  function renderAll() {
+    renderSummary();
+    renderRedFlags();
+    renderSuppliersTable(document.getElementById('search-input').value);
+  }
+
+  async function init() {
+    try {
+      var client = await ensureSupabase();
+      var { data } = await client.auth.getSession();
+      if (!data || !data.session) {
+        window.location.replace('index.html');
+        return;
+      }
+      session = data.session;
+      document.getElementById('user-email').textContent = session.user.email;
+
+      await loadData();
+      renderAll();
+
+      document.getElementById('loading').hidden = true;
+      document.getElementById('app').hidden = false;
+    } catch (err) {
+      document.getElementById('loading').textContent = err.message || 'Could not load the dashboard.';
+      console.error(err);
+    }
+  }
+
+  document.getElementById('search-input').addEventListener('input', function () {
+    renderSuppliersTable(this.value);
+  });
+
+  document.getElementById('detail-overlay').addEventListener('click', function (e) {
+    if (e.target === this) closeDetail();
+  });
+
+  document.getElementById('signout-btn').addEventListener('click', async function () {
+    var client = await ensureSupabase();
+    await client.auth.signOut();
+    window.location.replace('index.html');
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>

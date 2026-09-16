@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sustainable Suppliers Dashboard — Sign In</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F7F8FA;
+    --surface: #FFFFFF;
+    --ink: #14213D;
+    --muted: #6B7385;
+    --border: #DDE1E8;
+    --error: #B3261E;
+    --error-bg: #FBEAE9;
+  }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 40px 32px;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 28px;
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--ink);
+  }
+  .field { margin-bottom: 18px; }
+  input[type="email"], input[type="password"] {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--ink);
+  }
+  input:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 1px;
+  }
+  button[type="submit"] {
+    width: 100%;
+    padding: 11px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #FFFFFF;
+    background: var(--ink);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  button[type="submit"]:hover { background: #1c2c54; }
+  button[type="submit"]:disabled { opacity: 0.6; cursor: not-allowed; }
+  .error-banner {
+    background: var(--error-bg);
+    color: var(--error);
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    margin-bottom: 18px;
+  }
+  .error-banner[hidden] { display: none; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Sustainable Suppliers Dashboard</h1>
+  <p class="subtitle">Internal use only — sign in with your team account.</p>
+  <div class="error-banner" id="error-banner" hidden></div>
+  <form id="login-form" novalidate>
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required autocomplete="current-password">
+    </div>
+    <button type="submit" id="submit-btn">Sign In</button>
+  </form>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var sb = null;
+
+  function showError(message) {
+    var banner = document.getElementById('error-banner');
+    banner.textContent = message;
+    banner.hidden = false;
+  }
+
+  function hideError() {
+    var banner = document.getElementById('error-banner');
+    banner.hidden = true;
+    banner.textContent = '';
+  }
+
+  async function ensureSupabase() {
+    if (sb) return sb;
+    var res = await fetch('/.netlify/functions/public-config');
+    if (!res.ok) throw new Error('Could not reach the sign-in service.');
+    var cfg = await res.json();
+    sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+    return sb;
+  }
+
+  async function redirectIfAlreadySignedIn() {
+    try {
+      var client = await ensureSupabase();
+      var { data } = await client.auth.getSession();
+      if (data && data.session) {
+        window.location.replace('dashboard.html');
+      }
+    } catch (err) {
+      // If config isn't reachable yet, just let the user try to log in normally.
+      console.error(err);
+    }
+  }
+
+  document.getElementById('login-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    hideError();
+    var submitBtn = document.getElementById('submit-btn');
+    var email = document.getElementById('email').value.trim();
+    var password = document.getElementById('password').value;
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Signing in…';
+
+    try {
+      var client = await ensureSupabase();
+      var { error } = await client.auth.signInWithPassword({ email: email, password: password });
+      if (error) throw new Error(error.message || 'Sign-in failed.');
+      window.location.href = 'dashboard.html';
+    } catch (err) {
+      showError(err.message || 'Sign-in failed. Please try again.');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Sign In';
+    }
+  });
+
+  redirectIfAlreadySignedIn();
+})();
+</script>
+</body>
+</html>

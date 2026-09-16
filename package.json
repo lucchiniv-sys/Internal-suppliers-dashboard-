@@ -1,0 +1,9 @@
+{
+  "name": "sustainable-suppliers-dashboard",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Sustainable Suppliers Dashboard — Internal Use Only (Netlify Functions dependencies).",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4"
+  }
+}
