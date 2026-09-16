@@ -4,29 +4,22 @@
 
 **Session:** 1 — in progress
 **Last updated:** 2026-09-16 — Session 1
-**Live URL:** https://miadb.netlify.app (Netlify site created and env vars set; this commit forces a fresh deploy to pick them up)
+**Live URL:** https://miadb.netlify.app (public)
 
 ## Current state
-Database and frontend code are both done. Database: submission_reviews table + RLS live and verified, sibling tool's schema untouched. Frontend: index.html (login), dashboard.html (summary, red flags, searchable suppliers table with inline editable review status, detail modal), netlify/functions/public-config.js, netlify/functions/signed-file-url.js (auth-gated signed URLs for viewing uploaded files) — all written and pushed. Netlify site "miadb" created and SUPABASE_URL/SUPABASE_ANON_KEY/SUPABASE_SERVICE_ROLE_KEY set. Not yet tested live.
+Live and working. Login (Supabase Auth email/password), Summary counts, Red Flags, and the searchable Suppliers Table (with a Type badge column and inline-editable Review Status) are all verified against the deployed site with a real account. One bug found and fixed during verification: signed-file-url.js returned "not configured" because SUPABASE_SERVICE_ROLE_KEY was set with the `envVarIsSecret` flag, which silently failed to persist the value (same failure mode hit on the sibling tool) — re-set without that flag, confirmed present via getAllEnvVars, redeploy pending to pick it up. File-view button not yet re-verified after this fix.
 
 ## Last session
-Session 1 (2026-09-16): Connected the local project folder to the GitHub repo, ran First Session Setup, built the database schema (submission_reviews + authenticated-role read access), switched the frontend stack from React+Vite to plain HTML/JS (no Node.js available to test a Vite build locally), and wrote the full frontend: login page, dashboard with all 4 sections, and the two Netlify Functions. Next: create the Netlify site for this repo, set environment variables, and test end-to-end against the live deploy.
+Session 1 (2026-09-16): Full build — schema (submission_reviews + authenticated-role read access), frontend (login, dashboard with all 4 sections, plain HTML/JS instead of the specced React/Vite since this environment has no Node.js), Netlify site "miadb" created, env vars set, deployed. Live-tested: login required a redo (user's password re-entry mismatch, resolved), added a Type column to the suppliers table per builder feedback, found and fixed the service-role-key env var bug. Created and will remove a temporary QA test account (qa-test-dashboard@example.com) used for verification — real team accounts are the builder's own.
 
 ## Remaining work
-- [x] First Session Setup: create docs/, move product-spec.md and the sibling supabase-setup.md into it (renamed supabase-setup-portal.md), commit (see CLAUDE.md Session Protocol)
-- [x] Connect to Supabase project "AI Lab project supplier portal" (ID yfshmobaatyruymcpbex) and read docs/supabase-setup-portal.md before any database work
-- [x] Create this tool's new table (submission_reviews) and RLS policies, without touching any existing table/policy — then write this tool's own docs/supabase-setup.md
-- [ ] Confirm the Supabase email/password Auth provider is enabled (Authentication → Providers), and invite the first team member(s) (Authentication → Users → Invite)
-- [x] Build Login view
-- [x] Build Home/Summary view — EcoVadis-complete, Questionnaire-complete, in-progress, and need-review counts
-- [x] Build Red Flags view — flagged questionnaire respondents with triggered rule(s) shown
-- [x] Build Suppliers Table — searchable by company name, with editable review status
-- [x] Build Supplier Detail view — full identity, file link or questionnaire answers, editable review status
-- [ ] Create the Netlify site for this repo and connect it to GitHub (no site exists yet — this is a brand-new repo)
-- [ ] Set Netlify env vars: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
-- [ ] Local/live test pass — full walkthrough of every view on the deployed site (login, summary counts, red flags, search, review status editing, file viewing, sign out), including confirming the existing Supplier Engagement Portal still works unchanged
+- [ ] Re-verify the "View Scorecard / View Uploaded File" button now that SUPABASE_SERVICE_ROLE_KEY is correctly set and a fresh deploy has gone out
+- [ ] Delete the temporary QA test auth user (qa-test-dashboard@example.com) once verification is done
+- [ ] Invite the real team member(s) via Authentication → Users → Invite (or Create new user), remove/keep the builder's own test account as she prefers
+- [ ] Test the online-questionnaire detail rendering (grouped Q&A by section) — no respondent has completed the online path yet, only excel_upload and in-progress exist, so this path is unverified
+- [ ] Test a genuine Red Flag once a supplier completes the online questionnaire with a flagged answer
 - [ ] Acceptance criteria pass — verify every criterion in spec Section "Acceptance Criteria" before calling this done
-- [ ] Restrict the site to the team (currently no Netlify-level password on top of the app's own login — decide if that's wanted in addition)
+- [ ] Decide whether to add a Netlify-level password on top of the app's own login (not requested in the spec; app login is the only gate today)
 
 ## Build decisions
 - The `authenticated` role had zero grants on respondents/ecovadis_submissions/questionnaire_submissions before this build (same lockdown as anon) — explicit `grant select ... to authenticated` was required in addition to the RLS policies, since a policy alone does nothing without the base grant.
@@ -34,7 +27,8 @@ Session 1 (2026-09-16): Connected the local project folder to the GitHub repo, r
 - Switched from the specced React + Vite + Tailwind to plain HTML/CSS/JS (builder approved) — no Node.js in the build environment to test a Vite build locally before pushing. No functional change from the spec.
 
 ## Known issues
-- Netlify MCP activation not yet decided — builder to confirm before or during the build session.
+- Setting a Netlify env var with `envVarIsSecret: true` via the Netlify MCP tool silently fails to persist the value (confirmed on both this project and the sibling one) — always set without that flag, then verify with getAllEnvVars before trusting it, and always redeploy after any env var change since functions only pick up new values on their next deploy.
+- Netlify MCP not activated for this repo — deploys happen via GitHub push, env vars are set manually via MCP by Claude Code (not a fully manual process, but not the "Netlify MCP active, fully automated" path either).
 - Brand colors provisional (#F7F8FA background, #14213D accent/text) — confirm before first deployment.
 - Supabase project is on the Free plan, now shared by two tools — pauses after ~1 week of no traffic, taking both tools offline together. Builder is aware and has chosen to stay on Free for now; monitor and reconsider Pro if this becomes disruptive.
 
