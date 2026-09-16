@@ -4,10 +4,10 @@
 
 **Session:** 1 — in progress
 **Last updated:** 2026-09-16 — Session 1
-**Live URL:** none yet
+**Live URL:** https://miadb.netlify.app (Netlify site created and env vars set; this commit forces a fresh deploy to pick them up)
 
 ## Current state
-Database and frontend code are both done, not yet deployed. Database: submission_reviews table + RLS live and verified, sibling tool's schema untouched. Frontend: index.html (login), dashboard.html (summary, red flags, searchable suppliers table with inline editable review status, detail modal), netlify/functions/public-config.js, netlify/functions/signed-file-url.js (auth-gated signed URLs for viewing uploaded files) — all written, not yet tested live since there is no Netlify site for this repo yet.
+Database and frontend code are both done. Database: submission_reviews table + RLS live and verified, sibling tool's schema untouched. Frontend: index.html (login), dashboard.html (summary, red flags, searchable suppliers table with inline editable review status, detail modal), netlify/functions/public-config.js, netlify/functions/signed-file-url.js (auth-gated signed URLs for viewing uploaded files) — all written and pushed. Netlify site "miadb" created and SUPABASE_URL/SUPABASE_ANON_KEY/SUPABASE_SERVICE_ROLE_KEY set. Not yet tested live.
 
 ## Last session
 Session 1 (2026-09-16): Connected the local project folder to the GitHub repo, ran First Session Setup, built the database schema (submission_reviews + authenticated-role read access), switched the frontend stack from React+Vite to plain HTML/JS (no Node.js available to test a Vite build locally), and wrote the full frontend: login page, dashboard with all 4 sections, and the two Netlify Functions. Next: create the Netlify site for this repo, set environment variables, and test end-to-end against the live deploy.
