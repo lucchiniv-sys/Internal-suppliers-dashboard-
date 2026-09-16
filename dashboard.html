@@ -145,6 +145,17 @@
   .file-yes { color: var(--final); font-weight: 500; }
   .file-no { color: var(--muted); }
 
+  .door-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 3px 9px;
+    border-radius: 4px;
+  }
+  .door-ecovadis { color: #6A3EA1; background: #F1E9FB; }
+  .door-questionnaire { color: #1E5C99; background: #E7F1FC; }
+
   select.status-select {
     font-family: inherit;
     font-size: 12px;
@@ -266,6 +277,7 @@
           <thead>
             <tr>
               <th>Company</th>
+              <th>Type</th>
               <th>Contact</th>
               <th>File</th>
               <th>Submitted</th>
@@ -470,7 +482,7 @@
 
     if (!rows.length) {
       var tr = el('tr');
-      var td = el('td', { colspan: '5', class: 'empty-state', text: 'No suppliers found.' });
+      var td = el('td', { colspan: '6', class: 'empty-state', text: 'No suppliers found.' });
       tr.appendChild(td);
       tbody.appendChild(tr);
       return;
@@ -482,6 +494,14 @@
 
       var tr = el('tr', { class: 'clickable' });
       tr.appendChild(el('td', { text: r.company_name }));
+
+      var typeTd = el('td');
+      typeTd.appendChild(el('span', {
+        class: 'door-badge ' + (r.door_type === 'ecovadis' ? 'door-ecovadis' : 'door-questionnaire'),
+        text: r.door_type === 'ecovadis' ? 'EcoVadis' : 'Questionnaire'
+      }));
+      tr.appendChild(typeTd);
+
       tr.appendChild(el('td', { text: r.contact_name }));
       tr.appendChild(el('td', { class: hasFile ? 'file-yes' : 'file-no', text: hasFile ? 'Yes' : 'No' }));
       tr.appendChild(el('td', { text: formatDate(r.updated_at) }));
