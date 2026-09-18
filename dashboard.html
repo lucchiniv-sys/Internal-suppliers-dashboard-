@@ -85,6 +85,42 @@
 
   .empty-state { font-size: 13px; color: var(--muted); padding: 16px 0; }
 
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 16px;
+  }
+  .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 16px; }
+  .chart-row { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+  .chart-legend { display: flex; flex-direction: column; gap: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .legend-count { font-weight: 600; margin-left: 4px; }
+
+  .btn-nav {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: #FFFFFF;
+    background: var(--ink);
+    border: none;
+    border-radius: 6px;
+    padding: 11px 20px;
+    cursor: pointer;
+    margin-top: 20px;
+  }
+  .btn-nav:hover { background: #1c2c54; }
+  .btn-nav-back {
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--border);
+    margin-top: 0;
+    margin-bottom: 20px;
+  }
+  .btn-nav-back:hover { background: var(--bg); }
+
   .flag-list { display: flex; flex-direction: column; gap: 8px; }
   .flag-row {
     background: var(--surface);
@@ -242,52 +278,68 @@
   <div id="loading" class="loading-msg">Loading…</div>
 
   <div id="app" hidden>
-    <section>
-      <h2>Summary</h2>
-      <div class="stat-grid">
-        <div class="stat-card">
-          <div class="stat-value" id="stat-ecovadis">0</div>
-          <div class="stat-label">EcoVadis submitted</div>
+    <div id="summary-view">
+      <section>
+        <h2>Summary</h2>
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-ecovadis">0</div>
+            <div class="stat-label">EcoVadis submitted</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-questionnaire">0</div>
+            <div class="stat-label">Questionnaire completed</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-in-progress">0</div>
+            <div class="stat-label">In progress</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-need-review">0</div>
+            <div class="stat-label">Need review</div>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-value" id="stat-questionnaire">0</div>
-          <div class="stat-label">Questionnaire completed</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="stat-in-progress">0</div>
-          <div class="stat-label">In progress</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="stat-need-review">0</div>
-          <div class="stat-label">Need review</div>
-        </div>
-      </div>
-    </section>
 
-    <section>
-      <h2>Red Flags</h2>
-      <div id="flags-container"></div>
-    </section>
+        <div class="chart-card">
+          <div class="chart-title">Submissions by type</div>
+          <div class="chart-row">
+            <svg id="pie-chart" viewBox="0 0 160 160" width="160" height="160"></svg>
+            <div class="chart-legend" id="chart-legend"></div>
+          </div>
+        </div>
 
-    <section>
-      <h2>All Suppliers</h2>
-      <input type="text" class="search-box" id="search-input" placeholder="Search by company name…">
-      <div style="overflow-x:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>Company</th>
-              <th>Type</th>
-              <th>Contact</th>
-              <th>File</th>
-              <th>Submitted</th>
-              <th>Review Status</th>
-            </tr>
-          </thead>
-          <tbody id="suppliers-tbody"></tbody>
-        </table>
-      </div>
-    </section>
+        <button class="btn-nav" id="view-details-btn">View Suppliers &amp; Red Flags →</button>
+      </section>
+    </div>
+
+    <div id="details-view" hidden>
+      <button class="btn-nav btn-nav-back" id="back-to-summary-btn">← Back to Summary</button>
+
+      <section>
+        <h2>Red Flags</h2>
+        <div id="flags-container"></div>
+      </section>
+
+      <section>
+        <h2>All Suppliers</h2>
+        <input type="text" class="search-box" id="search-input" placeholder="Search by company name…">
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Type</th>
+                <th>Contact</th>
+                <th>File</th>
+                <th>Submitted</th>
+                <th>Review Status</th>
+              </tr>
+            </thead>
+            <tbody id="suppliers-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
   </div>
 </main>
 
@@ -449,6 +501,80 @@
     document.getElementById('stat-questionnaire').textContent = questionnaireCount;
     document.getElementById('stat-in-progress').textContent = inProgressCount;
     document.getElementById('stat-need-review').textContent = needReviewCount;
+  }
+
+  function computeSubmissionTypeCounts() {
+    var ecovadisCount = Object.keys(state.ecovadisByRespondent).length;
+    var excelCount = 0, onlineCount = 0;
+    Object.keys(state.questionnaireByRespondent).forEach(function (id) {
+      var q = state.questionnaireByRespondent[id];
+      if (q.mode === 'excel_upload') excelCount++;
+      else if (q.mode === 'online') onlineCount++;
+    });
+    return { ecovadis: ecovadisCount, excel: excelCount, online: onlineCount };
+  }
+
+  function renderPieChart() {
+    var counts = computeSubmissionTypeCounts();
+    var slices = [
+      { label: 'EcoVadis', value: counts.ecovadis, color: '#6A3EA1' },
+      { label: 'Excel uploaded', value: counts.excel, color: '#0F766E' },
+      { label: 'Online questionnaire', value: counts.online, color: '#1E5C99' }
+    ];
+    var total = slices.reduce(function (sum, s) { return sum + s.value; }, 0);
+
+    var SVG_NS = 'http://www.w3.org/2000/svg';
+    var svg = document.getElementById('pie-chart');
+    svg.innerHTML = '';
+
+    if (total === 0) {
+      var emptyCircle = document.createElementNS(SVG_NS, 'circle');
+      emptyCircle.setAttribute('cx', '80'); emptyCircle.setAttribute('cy', '80'); emptyCircle.setAttribute('r', '70');
+      emptyCircle.setAttribute('fill', '#EEF0F3');
+      svg.appendChild(emptyCircle);
+      var emptyText = document.createElementNS(SVG_NS, 'text');
+      emptyText.setAttribute('x', '80'); emptyText.setAttribute('y', '84');
+      emptyText.setAttribute('text-anchor', 'middle');
+      emptyText.setAttribute('font-size', '11');
+      emptyText.setAttribute('fill', '#6B7385');
+      emptyText.textContent = 'No data yet';
+      svg.appendChild(emptyText);
+    } else {
+      var cx = 80, cy = 80, r = 70;
+      var startAngle = -Math.PI / 2;
+      var nonZeroSlices = slices.filter(function (s) { return s.value > 0; });
+      if (nonZeroSlices.length === 1) {
+        var onlyCircle = document.createElementNS(SVG_NS, 'circle');
+        onlyCircle.setAttribute('cx', cx); onlyCircle.setAttribute('cy', cy); onlyCircle.setAttribute('r', r);
+        onlyCircle.setAttribute('fill', nonZeroSlices[0].color);
+        svg.appendChild(onlyCircle);
+      } else {
+        nonZeroSlices.forEach(function (s) {
+          var fraction = s.value / total;
+          var endAngle = startAngle + fraction * Math.PI * 2;
+          var x1 = cx + r * Math.cos(startAngle), y1 = cy + r * Math.sin(startAngle);
+          var x2 = cx + r * Math.cos(endAngle), y2 = cy + r * Math.sin(endAngle);
+          var largeArc = (endAngle - startAngle) > Math.PI ? 1 : 0;
+          var d = 'M ' + cx + ',' + cy + ' L ' + x1 + ',' + y1 + ' A ' + r + ',' + r + ' 0 ' + largeArc + ' 1 ' + x2 + ',' + y2 + ' Z';
+          var path = document.createElementNS(SVG_NS, 'path');
+          path.setAttribute('d', d);
+          path.setAttribute('fill', s.color);
+          svg.appendChild(path);
+          startAngle = endAngle;
+        });
+      }
+    }
+
+    var legend = document.getElementById('chart-legend');
+    legend.innerHTML = '';
+    slices.forEach(function (s) {
+      var pct = total > 0 ? Math.round((s.value / total) * 100) : 0;
+      legend.appendChild(el('div', { class: 'legend-item' }, [
+        el('span', { class: 'legend-swatch', style: 'background:' + s.color + ';' }),
+        el('span', { text: s.label }),
+        el('span', { class: 'legend-count', text: s.value + ' (' + pct + '%)' })
+      ]));
+    });
   }
 
   function renderRedFlags() {
@@ -648,8 +774,19 @@
 
   function renderAll() {
     renderSummary();
+    renderPieChart();
     renderRedFlags();
     renderSuppliersTable(document.getElementById('search-input').value);
+  }
+
+  function showSummaryView() {
+    document.getElementById('summary-view').hidden = false;
+    document.getElementById('details-view').hidden = true;
+  }
+
+  function showDetailsView() {
+    document.getElementById('summary-view').hidden = true;
+    document.getElementById('details-view').hidden = false;
   }
 
   async function init() {
@@ -677,6 +814,9 @@
   document.getElementById('search-input').addEventListener('input', function () {
     renderSuppliersTable(this.value);
   });
+
+  document.getElementById('view-details-btn').addEventListener('click', showDetailsView);
+  document.getElementById('back-to-summary-btn').addEventListener('click', showSummaryView);
 
   document.getElementById('detail-overlay').addEventListener('click', function (e) {
     if (e.target === this) closeDetail();
