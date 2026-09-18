@@ -3,26 +3,27 @@
 > Claude Code: read this file at the start of every session, before touching anything. Update it at every save point. Replace content — do not append. History lives in git.
 
 **Session:** 1 — in progress
-**Last updated:** 2026-09-16 — Session 1
+**Last updated:** 2026-09-18 — Session 1
 **Live URL:** https://miadb.netlify.app (public)
 
 ## Current state
-Live and working, fully verified: login, Summary counts, Red Flags, the searchable Suppliers Table (Type badge, inline-editable Review Status), Supplier Detail view, and the signed file-view link (confirmed 200, correct Supabase Storage URL) all tested against the deployed site with a temporary QA account (created and deleted via the Supabase Admin API during this session). One bug found and fixed: signed-file-url.js returned "not configured" because SUPABASE_SERVICE_ROLE_KEY was set with the `envVarIsSecret` flag, which silently failed to persist the value (same failure mode as on the sibling tool) — re-set without that flag and redeployed.
+Live and fully verified, including two builder-requested improvements added this session: (1) a "Submissions by type" pie chart on the Summary view (EcoVadis / Excel uploaded / Online questionnaire, computed from the same data already loaded — no new queries), and (2) split the dashboard into two pages — Summary opens first by default, with a "View Suppliers & Red Flags →" button leading to the Red Flags + Suppliers Table page (and a back button). Also verified a genuine Red Flag end-to-end against real data (a supplier's online submission answered Yes/No/Yes on the three flagged fields plus one "Not Available" — all four reasons showed correctly).
 
 ## Last session
-Session 1 (2026-09-16): Full build — schema (submission_reviews + authenticated-role read access), frontend (login, dashboard with all 4 sections, plain HTML/JS instead of the specced React/Vite since this environment has no Node.js), Netlify site "miadb" created, env vars set, deployed. Live-tested: login required a redo (user's password re-entry mismatch, resolved), added a Type column to the suppliers table per builder feedback, found and fixed the service-role-key env var bug. Created and will remove a temporary QA test account (qa-test-dashboard@example.com) used for verification — real team accounts are the builder's own.
+Session 1 (2026-09-16 → 2026-09-18): Full build (schema, frontend, deploy) — see Build decisions for the React→HTML/JS switch. Live-tested and fixed two bugs: a login password mismatch (user error, resolved) and the SUPABASE_SERVICE_ROLE_KEY env var silently failing to save when marked secret (see Known issues). Added a Type column (EcoVadis/Questionnaire badge) to the suppliers table. On 2026-09-18: builder discovered a second, unconfigured Netlify site ("frabjous-dolphin-72bbf3") for the SIBLING repo (Supplier Engagement Portal) — not this tool — likely created by mistake during an "Import from Git" flow; two of its three env vars were set before the builder said to stop and keep using the original working site instead. That duplicate site is unrelated to this dashboard and needs no further action here. Then added the pie chart and the two-page Summary/Details split; verified both live with a temporary QA account (created and deleted via the Supabase Admin API).
 
 ## Remaining work
 - [ ] Invite the real team member(s) via Authentication → Users → Invite (or Create new user); the builder already has her own working account
-- [ ] Test the online-questionnaire detail rendering (grouped Q&A by section) — no respondent has completed the online path yet, only excel_upload and in-progress exist, so this path is unverified
-- [ ] Test a genuine Red Flag once a supplier completes the online questionnaire with a flagged answer
 - [ ] Acceptance criteria pass — verify every criterion in spec Section "Acceptance Criteria" before calling this done
 - [ ] Decide whether to add a Netlify-level password on top of the app's own login (not requested in the spec; app login is the only gate today)
+- [ ] Optional cleanup: decide what to do with the unrelated duplicate Netlify site "frabjous-dolphin-72bbf3" (belongs to the sibling Supplier Engagement Portal repo, not this one)
 
 ## Build decisions
 - The `authenticated` role had zero grants on respondents/ecovadis_submissions/questionnaire_submissions before this build (same lockdown as anon) — explicit `grant select ... to authenticated` was required in addition to the RLS policies, since a policy alone does nothing without the base grant.
 - submission_reviews RLS uses `using (true)`/`with check (true)` for all authenticated operations — matches the spec's "all team members have identical access" requirement; revisit if per-user restriction is ever needed.
 - Switched from the specced React + Vite + Tailwind to plain HTML/CSS/JS (builder approved) — no Node.js in the build environment to test a Vite build locally before pushing. No functional change from the spec.
+- Pie chart is hand-drawn inline SVG (no charting library) — three slices only, not worth a dependency, and keeps this a zero-build static site.
+- Two-page split (Summary / Details) implemented as two `<div>`s toggled via `hidden`, not separate HTML files — keeps a single shared data load and avoids a second auth/session check.
 
 ## Known issues
 - Setting a Netlify env var with `envVarIsSecret: true` via the Netlify MCP tool silently fails to persist the value (confirmed on both this project and the sibling one) — always set without that flag, then verify with getAllEnvVars before trusting it, and always redeploy after any env var change since functions only pick up new values on their next deploy.
