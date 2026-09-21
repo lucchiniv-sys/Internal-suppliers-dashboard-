@@ -1,11 +1,11 @@
 # Sustainable Suppliers Dashboard — Internal Use Only
 # Static site, no build framework. The build step just copies the public
-# surface (index.html, dashboard.html) into dist/ — internal reference
+# surface (index.html, dashboard.html, reset-password.html) into dist/ — internal reference
 # material in /docs is never published.
 
 [build]
   publish = "dist"
-  command = "rm -rf dist && mkdir -p dist && cp index.html dist/ && cp dashboard.html dist/"
+  command = "rm -rf dist && mkdir -p dist && cp index.html dist/ && cp dashboard.html dist/ && cp reset-password.html dist/"
 
 [functions]
   directory = "netlify/functions"

@@ -94,6 +94,28 @@
     margin-bottom: 18px;
   }
   .error-banner[hidden] { display: none; }
+  .success-banner {
+    background: #E4F5EA;
+    color: #1E7A46;
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    margin-bottom: 18px;
+  }
+  .success-banner[hidden] { display: none; }
+  .link-btn {
+    display: block;
+    margin: 16px auto 0;
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--muted);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .link-btn:hover { color: var(--ink); }
+  form[hidden] { display: none; }
 </style>
 </head>
 <body>
@@ -102,6 +124,7 @@
   <h1>Sustainable Suppliers Dashboard</h1>
   <p class="subtitle">Internal use only — sign in with your team account.</p>
   <div class="error-banner" id="error-banner" hidden></div>
+  <div class="success-banner" id="success-banner" hidden></div>
   <form id="login-form" novalidate>
     <div class="field">
       <label for="email">Email</label>
@@ -112,6 +135,17 @@
       <input type="password" id="password" name="password" required autocomplete="current-password">
     </div>
     <button type="submit" id="submit-btn">Sign In</button>
+    <button type="button" class="link-btn" id="show-forgot-btn">Forgot password?</button>
+  </form>
+
+  <form id="forgot-form" novalidate hidden>
+    <p class="subtitle" style="margin-bottom:18px;">Enter your team email and we'll send you a link to choose a new password.</p>
+    <div class="field">
+      <label for="forgot-email">Email</label>
+      <input type="email" id="forgot-email" name="forgot-email" required autocomplete="username">
+    </div>
+    <button type="submit" id="forgot-submit-btn">Send reset link</button>
+    <button type="button" class="link-btn" id="back-to-login-btn">Back to sign in</button>
   </form>
 </div>
 
@@ -174,6 +208,61 @@
       showError(err.message || 'Sign-in failed. Please try again.');
       submitBtn.disabled = false;
       submitBtn.textContent = 'Sign In';
+    }
+  });
+
+  function showSuccess(message) {
+    var banner = document.getElementById('success-banner');
+    banner.textContent = message;
+    banner.hidden = false;
+  }
+
+  function hideSuccess() {
+    var banner = document.getElementById('success-banner');
+    banner.hidden = true;
+    banner.textContent = '';
+  }
+
+  function showForm(which) {
+    hideError();
+    hideSuccess();
+    document.getElementById('login-form').hidden = which !== 'login';
+    document.getElementById('forgot-form').hidden = which !== 'forgot';
+    if (which === 'forgot') {
+      var typed = document.getElementById('email').value.trim();
+      if (typed) document.getElementById('forgot-email').value = typed;
+    }
+  }
+
+  document.getElementById('show-forgot-btn').addEventListener('click', function () { showForm('forgot'); });
+  document.getElementById('back-to-login-btn').addEventListener('click', function () { showForm('login'); });
+
+  document.getElementById('forgot-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    hideError();
+    hideSuccess();
+    var btn = document.getElementById('forgot-submit-btn');
+    var email = document.getElementById('forgot-email').value.trim();
+    if (!email) {
+      showError('Please enter your email.');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    try {
+      var client = await ensureSupabase();
+      var { error } = await client.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/reset-password.html'
+      });
+      if (error) throw new Error(error.message || 'Could not send the reset link.');
+      // Same message whether or not the account exists, so the form can't be used to probe for team emails.
+      showSuccess('If an account exists for that email, a reset link is on its way. Check your inbox (and spam).');
+    } catch (err) {
+      showError(err.message || 'Could not send the reset link. Please try again.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Send reset link';
     }
   });
 
