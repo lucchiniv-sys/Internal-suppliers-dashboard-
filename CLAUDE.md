@@ -76,7 +76,7 @@ After setup, write docs/supabase-setup.md and update it at every save point that
 
 ## Project Structure
 ```
-/                     ← root: CLAUDE.md, PROGRESS.md, index.html (login), dashboard.html (main app)
+/                     ← root: CLAUDE.md, PROGRESS.md, index.html (login + forgot-password request), reset-password.html (choose new password), dashboard.html (main app)
 /netlify/functions    ← public-config.js, signed-file-url.js (service-role-backed)
 /docs                 ← product-spec.md, supabase-setup.md, supabase-setup-portal.md
 ```

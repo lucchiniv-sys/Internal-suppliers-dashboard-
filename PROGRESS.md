@@ -2,17 +2,19 @@
 
 > Claude Code: read this file at the start of every session, before touching anything. Update it at every save point. Replace content — do not append. History lives in git.
 
-**Session:** 1 — in progress
-**Last updated:** 2026-09-18 — Session 1
+**Session:** 2 — in progress
+**Last updated:** 2026-09-21 — Session 2
 **Live URL:** https://miadb.netlify.app (public)
 
 ## Current state
-Live and fully verified, including two builder-requested improvements added this session: (1) a "Submissions by type" pie chart on the Summary view (EcoVadis / Excel uploaded / Online questionnaire, computed from the same data already loaded — no new queries), and (2) split the dashboard into two pages — Summary opens first by default, with a "View Suppliers & Red Flags →" button leading to the Red Flags + Suppliers Table page (and a back button). Also verified a genuine Red Flag end-to-end against real data (a supplier's online submission answered Yes/No/Yes on the three flagged fields plus one "Not Available" — all four reasons showed correctly).
+Live and verified: login, Summary (stat cards + "Submissions by type" pie chart), Red Flags, searchable Suppliers Table (Type badge, inline Review Status), Supplier Detail with signed file links, two-page navigation (Summary first, button to Suppliers & Red Flags), and — new — a forgot-password flow (request form on the login page, reset-password.html to choose a new password). The reset flow's page logic is fully verified live; the emailed link itself will NOT land correctly until the builder adds the site to Supabase's Redirect URLs (see Remaining work), and delivery to non-org team members is untested (see Known issues).
 
 ## Last session
-Session 1 (2026-09-16 → 2026-09-18): Full build (schema, frontend, deploy) — see Build decisions for the React→HTML/JS switch. Live-tested and fixed two bugs: a login password mismatch (user error, resolved) and the SUPABASE_SERVICE_ROLE_KEY env var silently failing to save when marked secret (see Known issues). Added a Type column (EcoVadis/Questionnaire badge) to the suppliers table. On 2026-09-18: builder discovered a second, unconfigured Netlify site ("frabjous-dolphin-72bbf3") for the SIBLING repo (Supplier Engagement Portal) — not this tool — likely created by mistake during an "Import from Git" flow; two of its three env vars were set before the builder said to stop and keep using the original working site instead. That duplicate site is unrelated to this dashboard and needs no further action here. Then added the pie chart and the two-page Summary/Details split; verified both live with a temporary QA account (created and deleted via the Supabase Admin API).
+Session 2 (2026-09-21): Added the forgot-password feature at the builder's request (not in spec v1.0). Verified with a recovery link generated via the Supabase Admin API: password-mismatch check, successful change, old password rejected/new accepted, redirect to dashboard, and the invalid/expired-link state; temporary QA account deleted afterwards (only the builder's own account remains). Found that Supabase ignores our redirect and falls back to http://localhost:3000 because https://miadb.netlify.app/** is not in the project's allowed Redirect URLs. Also fixed netlify.toml so the new page is copied into dist/. (Session 1, 2026-09-16→18: full build, Type column, pie chart, two-page split; details in git history.)
 
 ## Remaining work
+- [ ] **Builder: add `https://miadb.netlify.app/**` to Supabase → Authentication → URL Configuration → Redirect URLs** — required for the forgot-password email link to reach reset-password.html (currently falls back to localhost:3000). Optionally also set Site URL to https://miadb.netlify.app (this dashboard is the only tool using Auth)
+- [ ] Decide on custom SMTP (Authentication → SMTP Settings) if team members outside the Supabase org need reset/invite emails; then test one real reset email end-to-end with a real inbox
 - [ ] Invite the real team member(s) via Authentication → Users → Invite (or Create new user); the builder already has her own working account
 - [ ] Acceptance criteria pass — verify every criterion in spec Section "Acceptance Criteria" before calling this done
 - [ ] Decide whether to add a Netlify-level password on top of the app's own login (not requested in the spec; app login is the only gate today)
@@ -22,10 +24,13 @@ Session 1 (2026-09-16 → 2026-09-18): Full build (schema, frontend, deploy) —
 - The `authenticated` role had zero grants on respondents/ecovadis_submissions/questionnaire_submissions before this build (same lockdown as anon) — explicit `grant select ... to authenticated` was required in addition to the RLS policies, since a policy alone does nothing without the base grant.
 - submission_reviews RLS uses `using (true)`/`with check (true)` for all authenticated operations — matches the spec's "all team members have identical access" requirement; revisit if per-user restriction is ever needed.
 - Switched from the specced React + Vite + Tailwind to plain HTML/CSS/JS (builder approved) — no Node.js in the build environment to test a Vite build locally before pushing. No functional change from the spec.
+- Forgot-password (added at builder's request, beyond spec v1.0): the request form shows the same neutral "if an account exists…" message whether or not the email exists, so it can't be used to probe which addresses are team members; new passwords require ≥ 8 characters, checked client-side (Supabase's own minimum is lower).
 - Pie chart is hand-drawn inline SVG (no charting library) — three slices only, not worth a dependency, and keeps this a zero-build static site.
 - Two-page split (Summary / Details) implemented as two `<div>`s toggled via `hidden`, not separate HTML files — keeps a single shared data load and avoids a second auth/session check.
 
 ## Known issues
+- Supabase's built-in email sender is rate-limited and (on the default setup) only delivers to Supabase org/project team addresses — a colleague outside the org may never receive a reset or invite email. Not tested with a real inbox (`example.com` addresses are rejected by Supabase, and no real email was sent during testing).
+- The Auth Site URL / Redirect URL settings are project-wide, shared with the Supplier Engagement Portal (which uses no Auth) — only ADD entries, never remove existing ones.
 - Setting a Netlify env var with `envVarIsSecret: true` via the Netlify MCP tool silently fails to persist the value (confirmed on both this project and the sibling one) — always set without that flag, then verify with getAllEnvVars before trusting it, and always redeploy after any env var change since functions only pick up new values on their next deploy.
 - Netlify MCP not activated for this repo — deploys happen via GitHub push, env vars are set manually via MCP by Claude Code (not a fully manual process, but not the "Netlify MCP active, fully automated" path either).
 - Brand colors provisional (#F7F8FA background, #14213D accent/text) — confirm before first deployment.

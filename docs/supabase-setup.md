@@ -41,7 +41,13 @@ Before this change, the `authenticated` role had zero grants on any of these thr
 
 ## Auth
 
-Method: email and password. Signup: invite-only — the builder invites team members directly via the Supabase dashboard (Authentication → Users → Invite). Email/password auth is Supabase's default provider and should already be enabled; confirm under Authentication → Providers before relying on it.
+Method: email and password. Signup: invite-only — the builder invites team members directly via the Supabase dashboard (Authentication → Users → Invite). Email/password auth is Supabase's default provider and is confirmed working (sign-in tested live on 2026-09-16).
+
+**Forgot-password flow (added 2026-09-21):** index.html calls `auth.resetPasswordForEmail(email, { redirectTo: <site origin>/reset-password.html })`; the emailed link lands on reset-password.html, which reads the recovery session from the URL and calls `auth.updateUser({ password })`. Verified live with a recovery link generated via the Admin API (mismatch check, successful change, old password rejected, invalid-link state).
+
+**Auth URL configuration — project-wide, applies to both tools sharing this project:** the recovery link only returns to the dashboard if `https://miadb.netlify.app/**` is in Authentication → URL Configuration → Redirect URLs. Verified 2026-09-21 that it was NOT: a link generated with that `redirect_to` came back pointing at the project's Site URL (`http://localhost:3000`) instead. Adding it is additive — it does not affect the Supplier Engagement Portal, which uses no Auth.
+
+**Email delivery caveat:** Supabase's built-in email sender is heavily rate-limited and, on the default setup, only delivers to addresses belonging to the Supabase organisation/project team. Team members outside the Supabase org may not receive reset (or invite) emails until a custom SMTP provider is configured under Authentication → SMTP Settings. Not tested end-to-end with a real inbox.
 
 ## File access
 
