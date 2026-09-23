@@ -2,19 +2,21 @@
 
 > Claude Code: read this file at the start of every session, before touching anything. Update it at every save point. Replace content — do not append. History lives in git.
 
-**Session:** 2 — in progress
-**Last updated:** 2026-09-21 — Session 2
+**Session:** 3 — in progress
+**Last updated:** 2026-09-23 — Session 3
 **Live URL:** https://miadb.netlify.app (public)
 
 ## Current state
-Live and verified: login, Summary (stat cards + "Submissions by type" pie chart), Red Flags, searchable Suppliers Table (Type badge, inline Review Status), Supplier Detail with signed file links, two-page navigation (Summary first, button to Suppliers & Red Flags), and — new — a forgot-password flow (request form on the login page, reset-password.html to choose a new password). The reset flow's page logic is fully verified live, and the Supabase Redirect URLs are now set: a recovery link generated via the Admin API redirects to https://miadb.netlify.app/reset-password.html. Not yet confirmed: a real reset email arriving in an inbox and its link working end to end (the builder hit "email rate limit exceeded" from repeated test requests and must wait ~1 hour), and delivery to non-org team members (see Known issues).
+Live and verified end-to-end: login, forgot-password (including a real emailed reset link, confirmed working by the builder on 2026-09-23), Summary (stat cards + "Submissions by type" pie chart), Red Flags, searchable Suppliers Table (Type badge, inline Review Status), Supplier Detail with signed file links, two-page navigation (Summary first, button to Suppliers & Red Flags). Remaining open items are non-blocking (see below).
 
 ## Last session
 Session 2 (2026-09-21): Added the forgot-password feature at the builder's request (not in spec v1.0). Verified with a recovery link generated via the Supabase Admin API: password-mismatch check, successful change, old password rejected/new accepted, redirect to dashboard, and the invalid/expired-link state; temporary QA account deleted afterwards (only the builder's own account remains). Found that Supabase ignored our redirect and fell back to http://localhost:3000 because the site was not in the project's allowed Redirect URLs (the builder's first real reset email led to a dead page); after the builder added `https://miadb.netlify.app/**` and `https://miadb.netlify.app/reset-password.html`, re-tested with Admin-API links and the redirect is correct. The builder then hit Supabase's built-in email rate limit. Also fixed netlify.toml so the new page is copied into dist/. (Session 1, 2026-09-16→18: full build, Type column, pie chart, two-page split; details in git history.)
 
+Session 3 (2026-09-23): Builder confirmed a real forgot-password email arrived and its link opened "Choose a new password" correctly — the flow is fully working, not just verified via the Admin API.
+
 ## Remaining work
-- [ ] Builder: after the rate limit clears (~1 hour), request ONE reset email from the login page with her own address and confirm the link lands on "Choose a new password"
-- [ ] Decide on custom SMTP (Authentication → SMTP Settings) if team members outside the Supabase org need reset/invite emails; then test one real reset email end-to-end with a real inbox
+- [x] Builder: requested a real reset email and confirmed the link lands on "Choose a new password"
+- [ ] Decide on custom SMTP (Authentication → SMTP Settings) if team members outside the Supabase org need reset/invite emails
 - [ ] Invite the real team member(s) via Authentication → Users → Invite (or Create new user); the builder already has her own working account
 - [ ] Acceptance criteria pass — verify every criterion in spec Section "Acceptance Criteria" before calling this done
 - [ ] Decide whether to add a Netlify-level password on top of the app's own login (not requested in the spec; app login is the only gate today)
