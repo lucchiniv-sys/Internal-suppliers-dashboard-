@@ -934,6 +934,10 @@
         roleTd.appendChild(document.createTextNode(' '));
       }
       roleTd.appendChild(buildRoleSelect(u.id, u.role || '', async function (newRole) {
+        if (u.id === session.user.id && newRole !== 'administrator') {
+          var ok = confirm('This is your own account. Changing it away from Administrator will remove your own access to Manage Users. Continue?');
+          if (!ok) { loadManageUsers(); return; }
+        }
         await saveUserRole(u.id, newRole, rowState);
         loadManageUsers();
       }));
