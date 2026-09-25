@@ -65,7 +65,7 @@ Not yet run (needs real accounts): the `list-users.js` function's own role gate 
 **Half B — the named people.** Not yet run. Needs: (1) this code pushed and deployed, (2) Revisore Pilota and Utente Pilota actually invited via the Supabase dashboard and assigned their roles in Manage Users. Until then this phase is not considered closed.
 
 ## Build decisions
-- Manage Users' role dropdown reverted to Administrator/Reviewer/User (builder clarified those labels were correct as they were) and the table columns swapped to Role first, Email second (builder's request).
+- Manage Users' role dropdown stays Administrator/Reviewer/User (technical values, unchanged). Added a separate, non-editable "Position" column showing the real-world job title behind each role (Head of Sustainability / HSE Manager / Procurement Manager), derived client-side from `u.role` via a `ROLE_POSITIONS` map — not stored in the database, since it's a 1:1 label for the existing role, not new data. Row order: Position → Email → Role dropdown (builder's request).
 - The `authenticated` role had zero grants on respondents/ecovadis_submissions/questionnaire_submissions before this build (same lockdown as anon) — explicit `grant select ... to authenticated` was required in addition to the RLS policies, since a policy alone does nothing without the base grant.
 - submission_reviews RLS uses `using (true)`/`with check (true)` for all authenticated operations in v1.0 — being replaced in v1.1 by role-gated policies (Administrator/Reviewer write).
 - Switched from the specced React + Vite + Tailwind to plain HTML/CSS/JS (builder approved) — no Node.js in the build environment to test a Vite build locally before pushing. No functional change from the spec.

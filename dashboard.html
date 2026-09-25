@@ -334,8 +334,9 @@
           <table id="manage-users-table" hidden>
             <thead>
               <tr>
-                <th>Role</th>
+                <th>Position</th>
                 <th>Email</th>
+                <th>Role</th>
               </tr>
             </thead>
             <tbody id="manage-users-tbody"></tbody>
@@ -400,6 +401,15 @@
     { value: 'reviewer', label: 'Reviewer' },
     { value: 'user', label: 'User' }
   ];
+
+  // The real-world job title behind each access role, shown as its own
+  // column in Manage Users — separate from the role dropdown itself, which
+  // stays on the technical Administrator/Reviewer/User values.
+  var ROLE_POSITIONS = {
+    administrator: 'Head of Sustainability',
+    reviewer: 'HSE Manager',
+    user: 'Procurement Manager'
+  };
 
   var STATUS_OPTIONS = [
     { value: 'new_to_be_analysed', label: 'New / To be analysed' },
@@ -927,11 +937,18 @@
     users.forEach(function (u) {
       var rowState = { role: u.role };
       var tr = el('tr');
-      var roleTd = el('td');
-      if (!u.role) {
-        roleTd.appendChild(el('span', { class: 'no-role-badge', text: 'No role assigned' }));
-        roleTd.appendChild(document.createTextNode(' '));
+
+      var positionTd = el('td');
+      if (u.role) {
+        positionTd.appendChild(el('span', { text: ROLE_POSITIONS[u.role] || u.role }));
+      } else {
+        positionTd.appendChild(el('span', { class: 'no-role-badge', text: 'No role assigned' }));
       }
+      tr.appendChild(positionTd);
+
+      tr.appendChild(el('td', { text: u.email }));
+
+      var roleTd = el('td');
       roleTd.appendChild(buildRoleSelect(u.id, u.role || '', async function (newRole) {
         if (u.id === session.user.id && newRole !== 'administrator') {
           var ok = confirm('This is your own account. Changing it away from Administrator will remove your own access to Manage Users. Continue?');
@@ -941,7 +958,7 @@
         loadManageUsers();
       }));
       tr.appendChild(roleTd);
-      tr.appendChild(el('td', { text: u.email }));
+
       tbody.appendChild(tr);
     });
   }
