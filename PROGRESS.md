@@ -56,7 +56,9 @@ Filled by Claude Code at half A and by the builder at half B: date, who, cell tr
 | 13 | Valentina, real administrator, unmodified | `delete` from `user_roles` (her own row) | refused — 0 rows actually deleted (`with ... returning *` confirmed), no DELETE policy exists | user_roles · delete · Administrator |
 | 14 | (post-check) | `select * from user_roles` after every test above | exactly one row: Valentina, `administrator` — confirms no simulation leaked past its rollback | — |
 
-Not yet run (needs a live deploy and real accounts): the `list-users.js` function's own role gate against a non-Administrator session; every test above as an actual logged-in browser session rather than a simulated database role. Half B below covers this.
+**Post-deploy live confirmation (2026-09-25, real HTTP, not simulation):** after push, `GET /.netlify/functions/list-users` with no Authorization header → `401 {"error":"Missing or invalid authorization."}`. Real REST calls to `GET /rest/v1/user_roles?select=*` and `GET /rest/v1/submission_reviews?select=*` using only the public `apikey` (no user session) → both `401 permission denied for table [name]`, matching the SQL simulation exactly.
+
+Not yet run (needs real accounts): the `list-users.js` function's own role gate against a non-Administrator *signed-in* session (only tested as fully logged-out above); every `own`/`no` cell as an actual logged-in browser session for Reviewer and User. Half B below covers this.
 
 **Half B — the named people.** Not yet run. Needs: (1) this code pushed and deployed, (2) Revisore Pilota and Utente Pilota actually invited via the Supabase dashboard and assigned their roles in Manage Users. Until then this phase is not considered closed.
 
