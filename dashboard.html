@@ -334,8 +334,8 @@
           <table id="manage-users-table" hidden>
             <thead>
               <tr>
-                <th>Email</th>
                 <th>Role</th>
+                <th>Email</th>
               </tr>
             </thead>
             <tbody id="manage-users-tbody"></tbody>
@@ -395,12 +395,10 @@
     isAdmin: false
   };
 
-  // Display labels only — the underlying values (administrator/reviewer/user)
-  // are what RLS, the migrations and access-matrix.md actually key on.
   var ROLE_OPTIONS = [
-    { value: 'administrator', label: 'Head of Sustainability' },
-    { value: 'reviewer', label: 'HSE Manager' },
-    { value: 'user', label: 'Procurement Manager' }
+    { value: 'administrator', label: 'Administrator' },
+    { value: 'reviewer', label: 'Reviewer' },
+    { value: 'user', label: 'User' }
   ];
 
   var STATUS_OPTIONS = [
@@ -929,7 +927,6 @@
     users.forEach(function (u) {
       var rowState = { role: u.role };
       var tr = el('tr');
-      tr.appendChild(el('td', { text: u.email }));
       var roleTd = el('td');
       if (!u.role) {
         roleTd.appendChild(el('span', { class: 'no-role-badge', text: 'No role assigned' }));
@@ -937,13 +934,14 @@
       }
       roleTd.appendChild(buildRoleSelect(u.id, u.role || '', async function (newRole) {
         if (u.id === session.user.id && newRole !== 'administrator') {
-          var ok = confirm('This is your own account. Changing it away from Head of Sustainability will remove your own access to Manage Users. Continue?');
+          var ok = confirm('This is your own account. Changing it away from Administrator will remove your own access to Manage Users. Continue?');
           if (!ok) { loadManageUsers(); return; }
         }
         await saveUserRole(u.id, newRole, rowState);
         loadManageUsers();
       }));
       tr.appendChild(roleTd);
+      tr.appendChild(el('td', { text: u.email }));
       tbody.appendChild(tr);
     });
   }
