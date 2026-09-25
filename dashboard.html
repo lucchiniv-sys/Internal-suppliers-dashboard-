@@ -204,6 +204,18 @@
   .status-new { color: var(--muted); }
   .status-need_review { color: var(--need-review); font-weight: 500; }
   .status-final_submission { color: var(--final); font-weight: 500; }
+  .status-text { font-size: 12px; }
+
+  select.role-select {
+    font-family: inherit;
+    font-size: 12px;
+    padding: 5px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink);
+  }
+  .no-role-badge { font-size: 11px; font-weight: 500; color: var(--muted); background: var(--bg); padding: 3px 8px; border-radius: 4px; }
 
   .overlay {
     position: fixed;
@@ -309,6 +321,26 @@
         </div>
 
         <button class="btn-nav" id="view-details-btn">View Suppliers &amp; Red Flags →</button>
+        <button class="btn-nav" id="manage-users-btn" hidden>Manage Users →</button>
+      </section>
+    </div>
+
+    <div id="manage-users-view" hidden>
+      <button class="btn-nav btn-nav-back" id="back-from-users-btn">← Back to Summary</button>
+      <section>
+        <h2>Manage Users</h2>
+        <p class="empty-state" id="manage-users-loading">Loading…</p>
+        <div style="overflow-x:auto;">
+          <table id="manage-users-table" hidden>
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Role</th>
+              </tr>
+            </thead>
+            <tbody id="manage-users-tbody"></tbody>
+          </table>
+        </div>
       </section>
     </div>
 
@@ -357,8 +389,17 @@
     respondents: [],
     ecovadisByRespondent: {},
     questionnaireByRespondent: {},
-    reviewByRespondent: {}
+    reviewByRespondent: {},
+    myRole: null,     // 'administrator' | 'reviewer' | 'user' | null (no role yet)
+    canEdit: false,   // administrator or reviewer
+    isAdmin: false
   };
+
+  var ROLE_OPTIONS = [
+    { value: 'administrator', label: 'Administrator' },
+    { value: 'reviewer', label: 'Reviewer' },
+    { value: 'user', label: 'User' }
+  ];
 
   var STATUS_OPTIONS = [
     { value: 'new_to_be_analysed', label: 'New / To be analysed' },
@@ -440,6 +481,10 @@
   function statusLabel(value) {
     var match = STATUS_OPTIONS.filter(function (o) { return o.value === value; })[0];
     return match ? match.label : value;
+  }
+
+  function buildStatusText(currentStatus) {
+    return el('span', { class: 'status-text status-' + currentStatus, text: statusLabel(currentStatus) });
   }
 
   function buildStatusSelect(respondentId, currentStatus, onChange) {
@@ -633,9 +678,13 @@
       tr.appendChild(el('td', { text: formatDate(r.updated_at) }));
 
       var statusTd = el('td');
-      statusTd.appendChild(buildStatusSelect(r.id, currentStatus, function (newStatus) {
-        saveReviewStatus(r.id, newStatus);
-      }));
+      if (state.canEdit) {
+        statusTd.appendChild(buildStatusSelect(r.id, currentStatus, function (newStatus) {
+          saveReviewStatus(r.id, newStatus);
+        }));
+      } else {
+        statusTd.appendChild(buildStatusText(currentStatus));
+      }
       tr.appendChild(statusTd);
 
       tr.addEventListener('click', function () { openDetail(r.id); });
@@ -697,10 +746,14 @@
 
     var statusField = el('div', { class: 'status-field' }, [el('label', { text: 'Review status' })]);
     var currentStatus = state.reviewByRespondent[r.id] || 'new_to_be_analysed';
-    statusField.appendChild(buildStatusSelect(r.id, currentStatus, function (newStatus) {
-      saveReviewStatus(r.id, newStatus);
-      renderSuppliersTable(document.getElementById('search-input').value);
-    }));
+    if (state.canEdit) {
+      statusField.appendChild(buildStatusSelect(r.id, currentStatus, function (newStatus) {
+        saveReviewStatus(r.id, newStatus);
+        renderSuppliersTable(document.getElementById('search-input').value);
+      }));
+    } else {
+      statusField.appendChild(buildStatusText(currentStatus));
+    }
     panel.appendChild(statusField);
 
     document.getElementById('detail-overlay').hidden = false;
@@ -782,11 +835,111 @@
   function showSummaryView() {
     document.getElementById('summary-view').hidden = false;
     document.getElementById('details-view').hidden = true;
+    document.getElementById('manage-users-view').hidden = true;
   }
 
   function showDetailsView() {
     document.getElementById('summary-view').hidden = true;
     document.getElementById('details-view').hidden = false;
+    document.getElementById('manage-users-view').hidden = true;
+  }
+
+  function showManageUsersView() {
+    // Belt-and-braces only: the real refusal is the database (RLS) and the
+    // list-users function's own role check, not this UI gate.
+    if (!state.isAdmin) return;
+    document.getElementById('summary-view').hidden = true;
+    document.getElementById('details-view').hidden = true;
+    document.getElementById('manage-users-view').hidden = false;
+    loadManageUsers();
+  }
+
+  async function loadMyRole() {
+    var client = await ensureSupabase();
+    var { data, error } = await client
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+    if (error) {
+      console.error('Failed to read your role:', error);
+    }
+    state.myRole = data ? data.role : null;
+    state.isAdmin = state.myRole === 'administrator';
+    state.canEdit = state.myRole === 'administrator' || state.myRole === 'reviewer';
+    document.getElementById('manage-users-btn').hidden = !state.isAdmin;
+  }
+
+  function buildRoleSelect(userId, currentRole, onChange) {
+    var select = el('select', { class: 'role-select' });
+    ROLE_OPTIONS.forEach(function (opt) {
+      var option = el('option', { value: opt.value, text: opt.label });
+      if (opt.value === currentRole) option.setAttribute('selected', 'selected');
+      select.appendChild(option);
+    });
+    select.addEventListener('change', function () { onChange(select.value); });
+    return select;
+  }
+
+  async function saveUserRole(userId, newRole, rowState) {
+    var client = await ensureSupabase();
+    var { error } = await client.from('user_roles').upsert(
+      { user_id: userId, role: newRole, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id' }
+    );
+    if (error) {
+      console.error('Failed to save role:', error);
+      alert('Could not save that role. Please try again.');
+      return;
+    }
+    rowState.role = newRole;
+    // If the Administrator changed their own row, refresh local gating so the
+    // rest of the app reflects it without requiring a full reload.
+    if (userId === session.user.id) {
+      await loadMyRole();
+    }
+  }
+
+  async function loadManageUsers() {
+    var loadingEl = document.getElementById('manage-users-loading');
+    var tableEl = document.getElementById('manage-users-table');
+    loadingEl.hidden = false;
+    loadingEl.textContent = 'Loading…';
+    tableEl.hidden = true;
+
+    try {
+      var res = await fetch('/.netlify/functions/list-users', {
+        headers: { Authorization: 'Bearer ' + session.access_token }
+      });
+      var json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Could not load users.');
+      renderManageUsersTable(json.users || []);
+      loadingEl.hidden = true;
+      tableEl.hidden = false;
+    } catch (err) {
+      loadingEl.textContent = err.message || 'Could not load users.';
+    }
+  }
+
+  function renderManageUsersTable(users) {
+    var tbody = document.getElementById('manage-users-tbody');
+    tbody.innerHTML = '';
+    users.forEach(function (u) {
+      var rowState = { role: u.role };
+      var tr = el('tr');
+      tr.appendChild(el('td', { text: u.email }));
+      var roleTd = el('td');
+      if (!u.role) {
+        roleTd.appendChild(el('span', { class: 'no-role-badge', text: 'No role assigned' }));
+        roleTd.appendChild(document.createTextNode(' '));
+      }
+      roleTd.appendChild(buildRoleSelect(u.id, u.role || '', async function (newRole) {
+        await saveUserRole(u.id, newRole, rowState);
+        loadManageUsers();
+      }));
+      tr.appendChild(roleTd);
+      tbody.appendChild(tr);
+    });
   }
 
   async function init() {
@@ -800,6 +953,7 @@
       session = data.session;
       document.getElementById('user-email').textContent = session.user.email;
 
+      await loadMyRole();
       await loadData();
       renderAll();
 
@@ -817,6 +971,8 @@
 
   document.getElementById('view-details-btn').addEventListener('click', showDetailsView);
   document.getElementById('back-to-summary-btn').addEventListener('click', showSummaryView);
+  document.getElementById('manage-users-btn').addEventListener('click', showManageUsersView);
+  document.getElementById('back-from-users-btn').addEventListener('click', showSummaryView);
 
   document.getElementById('detail-overlay').addEventListener('click', function (e) {
     if (e.target === this) closeDetail();
